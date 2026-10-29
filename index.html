@@ -1,474 +1,165 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flight Intelligence Dashboard</title>
-    <!-- Tailwind CSS CDN for high-end styling -->
+    <!-- Tailwind CSS CDN for modern, clean styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#f0fdf4',
-                            500: '#22c55e',
-                            600: '#16a34a',
-                            700: '#15803d',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .mono-text {
-            font-family: 'JetBrains Mono', monospace;
-        }
-        /* Custom subtle scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
-        }
-    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between antialiased selection:bg-indigo-500 selection:text-white">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- Header / Navbar -->
-    <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="bg-gradient-to-tr from-indigo-600 to-violet-500 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-                    <i data-lucide="plane-takeoff" class="w-6 h-6 text-white"></i>
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                        Flight Intelligence <span class="bg-indigo-500/10 text-indigo-400 text-xs px-2 py-0.5 rounded-full font-mono border border-indigo-500/20">REAL-TIME</span>
-                    </h1>
-                    <p class="text-xs text-slate-400">Google Gemini Grounded Search</p>
-                </div>
+    <div class="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 md:p-8">
+        <!-- Header Section -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold tracking-tight text-white mb-2">Flight Intelligence Dashboard</h1>
+            <p class="text-slate-400 text-sm">Enter your Google AI Studio API key and flight number to instantly fetch live route details.</p>
+        </div>
+
+        <!-- Input Form Section (Securely inputting API key at runtime) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition">
             </div>
-            
-            <div class="flex items-center space-x-2">
-                <button onclick="toggleKeyHelpModal()" class="text-xs text-slate-400 hover:text-indigo-400 flex items-center gap-1.5 transition px-3 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 bg-slate-900/80">
-                    <i data-lucide="key" class="w-3.5 h-3.5"></i>
-                    <span>Get API Key</span>
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Flight Number</label>
+                <input type="text" id="flightInput" placeholder="e.g. AI-131 or BA177" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition">
+            </div>
+            <div class="flex items-end">
+                <button onclick="fetchFlightData()" id="searchBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 px-6 rounded-lg transition shadow-lg shadow-indigo-600/30 flex items-center justify-center">
+                    <span>Lookup Flight</span>
                 </button>
             </div>
         </div>
-    </header>
 
-    <!-- Main Content Container -->
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-grow w-full">
+        <!-- Loading Spinner State -->
+        <div id="loader" class="hidden text-center py-12">
+            <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent"></div>
+            <p class="text-slate-400 mt-3 text-sm">Analyzing live flight route and coordinates via AI...</p>
+        </div>
 
-        <!-- Search Controls Card -->
-        <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 md:p-6 shadow-2xl backdrop-blur-xl mb-8 relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- Error Banner -->
+        <div id="errorBanner" class="hidden bg-red-950/50 border border-red-800 text-red-200 p-4 rounded-lg mb-6 text-sm"></div>
+
+        <!-- Dashboard Result Display Area -->
+        <div id="dashboardResult" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            <form onsubmit="event.preventDefault(); trackFlight();" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                <!-- API Key Input -->
-                <div class="md:col-span-5">
-                    <label for="apiKey" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
-                        <span>Google AI Studio API Key</span>
-                        <span class="text-slate-500 text-[10px] lowercase">(stored locally)</span>
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                            <i data-lucide="shield-check" class="w-4 h-4"></i>
-                        </div>
-                        <input type="password" id="apiKey" autocomplete="off" placeholder="AIzaSy..." 
-                            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition font-mono">
-                        <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300">
-                            <i data-lucide="eye" id="eyeIcon" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Flight Number Input -->
-                <div class="md:col-span-4">
-                    <label for="flightNum" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                        Flight Number
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                            <i data-lucide="search" class="w-4 h-4"></i>
-                        </div>
-                        <input type="text" id="flightNum" placeholder="e.g. AI-131, KL808, BA177" 
-                            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm text-white uppercase tracking-wider font-semibold placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition">
-                    </div>
-                </div>
-
-                <!-- Submit Button -->
-                <div class="md:col-span-3">
-                    <button type="submit" id="searchBtn" 
-                        class="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 px-6 rounded-xl transition shadow-lg shadow-indigo-600/20 active:scale-[0.99] flex items-center justify-center space-x-2">
-                        <i data-lucide="radar" class="w-4 h-4"></i>
-                        <span>Fetch Flight Data</span>
-                    </button>
-                </div>
-            </form>
-        </section>
-
-        <!-- Loading Indicator -->
-        <section id="loader" class="hidden py-16 text-center">
-            <div class="inline-relative mb-4">
-                <div class="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin mx-auto"></div>
-            </div>
-            <h3 class="text-base font-semibold text-white">Searching Global Aviation Ground Data</h3>
-            <p class="text-xs text-slate-400 mt-1">Executing Gemini 2.5 search grounding for current flight schedule & position...</p>
-        </section>
-
-        <!-- Error Alert Banner -->
-        <section id="errorBanner" class="hidden bg-red-950/60 border border-red-800/80 text-red-200 p-4 rounded-xl mb-8 flex items-start space-x-3 shadow-lg">
-            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-400 shrink-0 mt-0.5"></i>
-            <div>
-                <h4 class="font-semibold text-sm text-red-100" id="errorTitle">Request Error</h4>
-                <p class="text-xs text-red-300/90 mt-0.5" id="errorMessage">An unexpected error occurred. Please verify inputs.</p>
-            </div>
-        </section>
-
-        <!-- Flight Dashboard Results -->
-        <section id="dashboard" class="hidden space-y-6">
-            
-            <!-- Flight Overview Bar -->
-            <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center space-x-3">
-                    <span id="resFlightBadge" class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 text-base font-mono font-bold px-3 py-1 rounded-lg">
-                        --
-                    </span>
-                    <div>
-                        <p class="text-xs text-slate-400">Data Freshness</p>
-                        <p class="text-xs font-semibold text-emerald-400 flex items-center gap-1">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Grounded Live
-                        </p>
-                    </div>
-                </div>
-
-                <div class="text-right text-xs text-slate-400">
-                    <span>Query Status: </span>
-                    <span class="text-slate-200 font-semibold">Active Schedule Located</span>
-                </div>
-            </div>
-
-            <!-- Main Route Cards Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Departure Card -->
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-indigo-500/10 text-indigo-400 text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">Departure</div>
+                <h3 class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Airport Name</h3>
+                <p id="depAirport" class="text-xl font-bold text-white mb-4">--</p>
                 
-                <!-- DEPARTURE CARD (4 Cols on LG) -->
-                <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shadow-xl">
-                    <div class="absolute top-0 right-0 bg-indigo-500/10 text-indigo-400 border-l border-b border-indigo-500/20 text-[11px] font-bold px-3.5 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1.5">
-                        <i data-lucide="plane-takeoff" class="w-3.5 h-3.5"></i>
-                        Departure
-                    </div>
-
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700/50">
                     <div>
-                        <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">Origin Airport</p>
-                        <h2 id="depAirportName" class="text-xl font-bold text-white leading-snug mb-2">--</h2>
+                        <span class="block text-xs text-slate-400">Departure Time</span>
+                        <span id="depTime" class="text-lg font-semibold text-indigo-300">--</span>
                     </div>
-
-                    <div class="mt-6 pt-6 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <p class="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                                <i data-lucide="clock" class="w-3.5 h-3.5 text-indigo-400"></i> Scheduled Local
-                            </p>
-                            <p id="depTimeLocal" class="text-base font-semibold text-slate-100 font-mono">--</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-slate-400 mb-1 flex items-center gap-1">
-                                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-indigo-400"></i> Coordinates
-                            </p>
-                            <p id="depCoords" class="text-sm font-semibold text-slate-300 mono-text bg-slate-950/60 p-2 rounded-lg border border-slate-800/80">--</p>
-                        </div>
+                    <div>
+                        <span class="block text-xs text-slate-400">Lat / Long</span>
+                        <span id="depCoords" class="text-sm font-mono text-slate-300">--</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- ARRIVAL CARD - PROMINENT DISPLAY (7 Cols on LG) -->
-                <div class="lg:col-span-7 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border-2 border-emerald-500/40 rounded-2xl p-6 md:p-8 relative overflow-hidden shadow-2xl flex flex-col justify-between">
-                    <div class="absolute top-0 right-0 bg-emerald-500/20 text-emerald-300 border-l border-b border-emerald-500/30 text-xs font-extrabold px-4 py-1.5 rounded-bl-xl uppercase tracking-wider flex items-center gap-2">
-                        <i data-lucide="plane-landing" class="w-4 h-4 text-emerald-400"></i>
-                        Target Destination
+            <!-- Arrival Card -->
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-6 relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">Arrival</div>
+                <h3 class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Airport Name</h3>
+                <p id="arrAirport" class="text-xl font-bold text-white mb-4">--</p>
+                
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-slate-700/50">
+                    <div>
+                        <span class="block text-xs text-slate-400">Arrival (Local & IST)</span>
+                        <span id="arrTime" class="text-lg font-semibold text-emerald-300">--</span>
                     </div>
-
-                    <!-- Prominent Arrival Airport Display -->
-                    <div class="mb-6">
-                        <p class="text-xs font-bold uppercase tracking-widest text-emerald-400 mb-2 flex items-center gap-1.5">
-                            <i data-lucide="building-2" class="w-4 h-4"></i> Arrival Airport & Location
-                        </p>
-                        <h2 id="arrAirportName" class="text-2xl sm:text-3xl font-extrabold text-white leading-tight tracking-tight drop-shadow-md">
-                            --
-                        </h2>
+                    <div>
+                        <span class="block text-xs text-slate-400">Lat / Long</span>
+                        <span id="arrCoords" class="text-sm font-mono text-slate-300">--</span>
                     </div>
-
-                    <!-- Prominent IST Time Highlight Box -->
-                    <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-4 md:p-5 mb-6 backdrop-blur-sm">
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                                <i data-lucide="clock-3" class="w-4 h-4"></i> Arrival Time (IST Conversion)
-                            </span>
-                            <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase font-mono">UTC +5:30</span>
-                        </div>
-                        <p id="arrTimeIST" class="text-2xl sm:text-4xl font-extrabold text-emerald-300 font-mono tracking-tight my-1">
-                            --
-                        </p>
-                        <p id="arrTimeLocal" class="text-xs text-slate-300 mt-2 flex items-center gap-1">
-                            <span class="text-slate-400">Destination Local Time:</span> <span class="font-mono font-medium" id="arrTimeLocalVal">--</span>
-                        </p>
-                    </div>
-
-                    <!-- Lat-Long Details Prominent Display -->
-                    <div class="pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
-                                <i data-lucide="navigation" class="w-3.5 h-3.5 text-emerald-400"></i> Arrival Lat-Long Coordinates
-                            </p>
-                            <p id="arrCoords" class="text-base sm:text-lg font-bold text-white mono-text bg-slate-950/80 px-4 py-2 rounded-xl border border-slate-800 text-emerald-400">
-                                --
-                            </p>
-                        </div>
-                        
-                        <div id="mapsBtnContainer" class="hidden">
-                            <a id="mapsUrl" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-xs font-semibold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-3.5 py-2 rounded-xl border border-indigo-500/20 transition">
-                                <span>View on Maps</span>
-                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-                            </a>
-                        </div>
-                    </div>
-
                 </div>
-
-            </div>
-            
-            <!-- Citation / Grounding Info -->
-            <div id="groundingSources" class="hidden text-xs text-slate-500 p-4 bg-slate-900/40 border border-slate-800/60 rounded-xl">
-                <p class="font-semibold text-slate-400 mb-1">Search Grounding Citations:</p>
-                <div id="sourcesList" class="flex flex-wrap gap-2"></div>
             </div>
 
-        </section>
-
-    </main>
-
-    <!-- Modal for API Key instructions -->
-    <div id="keyModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button onclick="toggleKeyHelpModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-            <h3 class="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                <i data-lucide="key" class="w-5 h-5 text-indigo-400"></i> Get Gemini API Key
-            </h3>
-            <ol class="text-xs text-slate-300 space-y-2.5 list-decimal list-inside mb-6">
-                <li>Visit <a href="https://aistudio.google.com/" target="_blank" class="text-indigo-400 underline font-semibold">Google AI Studio</a>.</li>
-                <li>Sign in with your Google Account.</li>
-                <li>Click <strong>"Get API key"</strong> and create a key in a project.</li>
-                <li>Copy and paste your key into the dashboard field above.</li>
-            </ol>
-            <button onclick="toggleKeyHelpModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-2.5 rounded-xl text-xs transition">
-                Got It
-            </button>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="border-t border-slate-800/60 py-6 bg-slate-900/40 mt-12">
-        <div class="max-w-6xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-2">
-            <p>Flight Intelligence Dashboard • Powered by Google Gemini 2.5 Grounded Search</p>
-            <p class="font-mono text-[11px]">Ready for GitHub Pages Deployment</p>
-        </div>
-    </footer>
-
-    <!-- App Logic Script -->
+    <!-- JavaScript Logic Handling API Interaction Safely -->
     <script>
-        // Initialize Lucide Icons
-        lucide.createIcons();
-
-        // Load cached API key from local storage on load
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedKey = localStorage.getItem('gemini_flight_api_key');
-            if (savedKey) {
-                document.getElementById('apiKey').value = savedKey;
-            }
-        });
-
-        // Toggle API Key visibility
-        function togglePasswordVisibility() {
-            const input = document.getElementById('apiKey');
-            const icon = document.getElementById('eyeIcon');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.setAttribute('data-lucide', 'eye-off');
-            } else {
-                input.type = 'password';
-                icon.setAttribute('data-lucide', 'eye');
-            }
-            lucide.createIcons();
-        }
-
-        // Toggle Key Help Modal
-        function toggleKeyHelpModal() {
-            const modal = document.getElementById('keyModal');
-            modal.classList.toggle('hidden');
-        }
-
-        // Main Flight Fetch Routine
-        async function trackFlight() {
-            const apiKey = document.getElementById('apiKey').value.trim();
-            const flightNum = document.getElementById('flightNum').value.trim();
-
+        async function fetchFlightData() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const flightNumber = document.getElementById('flightInput').value.trim();
             const loader = document.getElementById('loader');
             const errorBanner = document.getElementById('errorBanner');
-            const dashboard = document.getElementById('dashboard');
+            const dashboard = document.getElementById('dashboardResult');
             const searchBtn = document.getElementById('searchBtn');
 
-            // Form validation
-            if (!apiKey) {
-                showError("Missing API Key", "Please enter your Google AI Studio API key to fetch real-time data.");
-                return;
-            }
-            if (!flightNum) {
-                showError("Missing Flight Number", "Please enter a flight number (e.g., AI-131 or BA177).");
+            // Input Validation
+            if (!apiKey || !flightNumber) {
+                errorBanner.textContent = "Please enter both your API Key and a Flight Number.";
+                errorBanner.classList.remove('hidden');
                 return;
             }
 
-            // Store key for user convenience
-            localStorage.setItem('gemini_flight_api_key', apiKey);
-
-            // Reset UI States
             errorBanner.classList.add('hidden');
-            dashboard.classList.add('hidden');
             loader.classList.remove('hidden');
+            dashboard.classList.add('hidden');
             searchBtn.disabled = true;
 
-            // Prompt engineering asking Gemini for real-time grounded search data in JSON schema
-            const promptText = `Find real-time flight details for flight number "${flightNum}".
-Search for operational route schedule, departure/arrival airports, coordinates, and times.
-
-Return ONLY a raw valid JSON object with NO markdown quotes, NO backticks, and NO conversational text.
-
-JSON Schema required:
-{
-  "flightNumber": "${flightNum}",
-  "departure": {
-    "airportName": "Full Airport Name, City, Country",
-    "scheduledLocalTime": "Time & Date (e.g., 02:00 AM, 12 Oct)",
-    "latitudeLongitude": "Lat, Long (e.g. 19.0896, 72.8656)"
-  },
-  "arrival": {
-    "airportName": "Full Airport Name, City, Country",
-    "scheduledLocalTime": "Time & Date in Arrival Airport Local Timezone",
-    "scheduledISTTime": "Arrival Time explicitly converted to IST (Indian Standard Time, UTC+5:30)",
-    "latitudeLongitude": "Lat, Long (e.g. 52.3105, 4.7683)"
-  }
-}`;
+            const promptText = `Provide structured live flight details for flight number: "${flightNumber}". 
+            Return ONLY a valid JSON object with no markdown formatting or extra text, following this exact schema:
+            {
+              "departure": {
+                "airportName": "Full Airport Name and City",
+                "time": "Scheduled Departure Time with Timezone",
+                "latLong": "Latitude, Longitude coordinates"
+              },
+              "arrival": {
+                "airportName": "Full Airport Name and City",
+                "time": "Scheduled Arrival Time converted to IST and Local Time",
+                "latLong": "Latitude, Longitude coordinates"
+              }
+            }`;
 
             try {
-                // Call Gemini 2.5 Flash API with Google Search Grounding tool enabled
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: promptText }] }],
-                        tools: [{ google_search: {} }] // Real-time grounding feature
+                        tools: [{ google_search: {} }]
                     })
                 });
 
                 if (!response.ok) {
-                    const errObj = await response.json().catch(() => ({}));
-                    throw new Error(errObj.error?.message || `API HTTP Error ${response.status}`);
+                    throw new Error(`API Request failed with status ${response.status}`);
                 }
 
                 const data = await response.json();
+                const rawResponseText = data.candidates[0].content.parts[0].text;
+                
+                const cleanedJsonString = rawResponseText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const flightInfo = JSON.parse(cleanedJsonString);
 
-                if (!data.candidates || !data.candidates[0].content) {
-                    throw new Error("No operational flight data returned. Please verify the flight code.");
-                }
+                document.getElementById('depAirport').textContent = flightInfo.departure.airportName;
+                document.getElementById('depTime').textContent = flightInfo.departure.time;
+                document.getElementById('depCoords').textContent = flightInfo.departure.latLong;
 
-                // Extract raw response text
-                let rawText = data.candidates[0].content.parts[0].text;
+                document.getElementById('arrAirport').textContent = flightInfo.arrival.airportName;
+                document.getElementById('arrTime').textContent = flightInfo.arrival.time;
+                document.getElementById('arrCoords').textContent = flightInfo.arrival.latLong;
 
-                // Clean markdown code fence wrappers if present
-                rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
-
-                const parsed = JSON.parse(rawText);
-
-                // Populate UI Fields
-                document.getElementById('resFlightBadge').textContent = (parsed.flightNumber || flightNum).toUpperCase();
-
-                // Departure details
-                document.getElementById('depAirportName').textContent = parsed.departure?.airportName || 'Unknown Departure Airport';
-                document.getElementById('depTimeLocal').textContent = parsed.departure?.scheduledLocalTime || 'N/A';
-                document.getElementById('depCoords').textContent = parsed.departure?.latitudeLongitude || 'N/A';
-
-                // Arrival details (Prominent Focus)
-                document.getElementById('arrAirportName').textContent = parsed.arrival?.airportName || 'Unknown Arrival Airport';
-                document.getElementById('arrTimeIST').textContent = parsed.arrival?.scheduledISTTime || 'N/A';
-                document.getElementById('arrTimeLocalVal').textContent = parsed.arrival?.scheduledLocalTime || 'N/A';
-                document.getElementById('arrCoords').textContent = parsed.arrival?.latitudeLongitude || 'N/A';
-
-                // Google Maps link generation if coords present
-                if (parsed.arrival?.latitudeLongitude) {
-                    const coords = parsed.arrival.latitudeLongitude.replace(/\s+/g, '');
-                    document.getElementById('mapsUrl').href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}`;
-                    document.getElementById('mapsBtnContainer').classList.remove('hidden');
-                } else {
-                    document.getElementById('mapsBtnContainer').classList.add('hidden');
-                }
-
-                // Render grounding source citations if provided
-                const groundingChunks = data.candidates[0].groundingMetadata?.groundingChunks;
-                const sourcesList = document.getElementById('sourcesList');
-                sourcesList.innerHTML = '';
-                if (groundingChunks && groundingChunks.length > 0) {
-                    groundingChunks.forEach(chunk => {
-                        if (chunk.web?.uri) {
-                            const a = document.createElement('a');
-                            a.href = chunk.web.uri;
-                            a.target = '_blank';
-                            a.rel = 'noopener';
-                            a.className = 'bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-[10px] truncate max-w-[200px] inline-block';
-                            a.textContent = chunk.web.title || chunk.web.uri;
-                            sourcesList.appendChild(a);
-                        }
-                    });
-                    document.getElementById('groundingSources').classList.remove('hidden');
-                } else {
-                    document.getElementById('groundingSources').classList.add('hidden');
-                }
-
-                // Show dashboard
                 loader.classList.add('hidden');
                 dashboard.classList.remove('hidden');
-
             } catch (err) {
-                console.error("Flight Lookup Error:", err);
+                console.error(err);
                 loader.classList.add('hidden');
-                showError("Flight Data Error", err.message || "Failed to retrieve flight schedules. Check flight number and API key.");
+                errorBanner.textContent = "Failed to retrieve flight data. Please verify your API Key and Flight Number.";
+                errorBanner.classList.remove('hidden');
             } finally {
                 searchBtn.disabled = false;
             }
         }
-
-        // Helper to display error banner
-        function showError(title, msg) {
-            document.getElementById('errorTitle').textContent = title;
-            document.getElementById('errorMessage').textContent = msg;
-            document.getElementById('errorBanner').classList.remove('hidden');
-        }
     </script>
 </body>
 </html>
-
